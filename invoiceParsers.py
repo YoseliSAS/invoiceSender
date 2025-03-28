@@ -10,7 +10,15 @@ class InvoiceParser(ABC):
         """Extract invoice information from text content."""
         pass
 
+    @classmethod
+    def name(cls):
+        return cls.__name__.replace("InvoiceParser", "").lower()
+
 class DougsInvoiceParser(InvoiceParser):
+    @classmethod
+    def name(cls):
+        return "dougs"
+
     def extract_info(self, text):
         """Extract invoice information from text content."""
         invoice_match = re.search(r"Facture n°\s*([0-9]{4}-[0-9]{2}-FAC\s*\d+)", text)
@@ -38,6 +46,29 @@ class DougsInvoiceParser(InvoiceParser):
 
 # You could add more parser implementations for different invoice formats
 class AlternateInvoiceParser(InvoiceParser):
+    @classmethod
+    def name(cls):
+        return "alternate"
+
     def extract_info(self, text):
         # Different parsing logic for other invoice formats
         pass
+
+# Registry of available parsers
+AVAILABLE_PARSERS = {
+    parser.name(): parser
+    for parser in [DougsInvoiceParser, AlternateInvoiceParser]
+}
+
+def get_parser(name=None):
+    """Factory function to get the appropriate parser"""
+    if name is None:
+        # Default to standard parser
+        return DougsInvoiceParser()
+
+    parser_class = AVAILABLE_PARSERS.get(name.lower())
+    if parser_class is None:
+        available = ", ".join(AVAILABLE_PARSERS.keys())
+        raise ValueError(f"Unknown parser: {name}. Available parsers: {available}")
+
+    return parser_class()

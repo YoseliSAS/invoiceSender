@@ -10,15 +10,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from pypdf import PdfReader
-from invoiceParsers import DougsInvoiceParser
+from invoiceParsers import get_parser, AVAILABLE_PARSERS
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("InvoiceSender")
-
-parser = DougsInvoiceParser()
 
 def extract_text_from_pdf(pdf_file):
     """Extract text content from a PDF file."""
@@ -34,8 +32,9 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         raise ValueError(f"Error reading PDF file: {e}")
 
-def extract_invoice_info(text):
+def extract_invoice_info(text, parser_name=None):
     """Extract invoice information using the configured parser."""
+    parser = get_parser(parser_name)
     return parser.extract_info(text)
 
 def load_mail_config(config_file):
@@ -177,6 +176,9 @@ def main():
     parser.add_argument("--map", required=True, help="Path to the order mapping file.")
     parser.add_argument("--test", action="store_true", help="Generate email without sending it (test mode).")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
+    parser.add_argument("--parser", choices=list(AVAILABLE_PARSERS.keys()),
+                        default="dougs",
+                        help="Invoice parser to use.")
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -192,7 +194,7 @@ def main():
         text = extract_text_from_pdf(args.pdf)
         logger.debug(f"Extracted text: {text[:200]}...")  # Show only first 200 chars
 
-        info = extract_invoice_info(text)
+        info = extract_invoice_info(text, args.parser)
         sender, subject_template, body_template, smtp_server, smtp_port, smtp_user, smtp_password = \
             load_mail_config(args.mail_config)
         recipients = get_recipients(info['order_number'], args.map)
