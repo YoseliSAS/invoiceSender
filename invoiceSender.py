@@ -132,7 +132,7 @@ def send_email_smtp(sender, recipients, msg, smtp_server, smtp_port, smtp_user, 
         logger.error(f"SMTP error: {e}")
         raise ValueError(f"Failed to send email: {e}")
 
-def display_test_email(msg, recipients):
+def display_email(msg, recipients):
     """Display email content in a human-readable format for test mode."""
     separator = "-" * 70
 
@@ -163,8 +163,6 @@ def display_test_email(msg, recipients):
         for attachment in attachments:
             print(f"- {attachment}")
         print(separator)
-
-    print("This is a test email and was not sent.")
     print(separator)
 
 def main():
@@ -174,7 +172,7 @@ def main():
     parser.add_argument("--pdf", required=True, help="Path to the PDF invoice file.")
     parser.add_argument("--mail-config", required=True, help="Path to the mail configuration INI file.")
     parser.add_argument("--map", required=True, help="Path to the order mapping file.")
-    parser.add_argument("--test", action="store_true", help="Generate email without sending it (test mode).")
+    parser.add_argument("--dry-run", action="store_true", help="Generate email without sending it (test mode).")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
     parser.add_argument("--parser", choices=list(AVAILABLE_PARSERS.keys()),
                         default="dougs",
@@ -201,12 +199,20 @@ def main():
 
         msg = create_email_message(info, sender, subject_template, body_template, recipients, args.pdf)
 
-        if args.test:
-            logger.info("Test mode - email content:")
-            display_test_email(msg, recipients)
+        display_email(msg, recipients)
+
+        if args.dry_run:
+            logger.info("Dry run mode - email was not sent")
         else:
+            # Ask for confirmation unless --no-confirm is specified
+            confirm = input(f"\nSend this email to {len(recipients)} recipient(s)? (y/N): ").strip().lower()
+            if confirm != 'y':
+                logger.info("Email sending cancelled by user")
+                return
+
             logger.info(f"Sending email to {len(recipients)} recipients")
             send_email_smtp(sender, recipients, msg, smtp_server, smtp_port, smtp_user, smtp_password)
+            logger.info("Email sent successfully")
 
     except ValueError as e:
         logger.error(f"Error: {e}")
