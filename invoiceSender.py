@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from pypdf import PdfReader
+from invoiceParsers import DougsInvoiceParser
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("InvoiceSender")
 
+parser = DougsInvoiceParser()
 
 def extract_text_from_pdf(pdf_file):
     """Extract text content from a PDF file."""
@@ -33,30 +35,8 @@ def extract_text_from_pdf(pdf_file):
         raise ValueError(f"Error reading PDF file: {e}")
 
 def extract_invoice_info(text):
-    """Extract invoice information from text content."""
-    invoice_match = re.search(r"Facture n°\s*([0-9]{4}-[0-9]{2}-FAC\s*\d+)", text)
-    if invoice_match:
-        invoice_number = invoice_match.group(1).replace("\n", " ").strip()
-    else:
-        raise ValueError("Invoice number not found.")
-
-    order_match = re.search(r'Commande\s+([A-Z0-9\-]+)', text)
-    if not order_match:
-        raise ValueError("Order number not found.")
-    order_number = order_match.group(1).strip()
-
-    ttc_match = re.search(r'Total TTC\s*(?:à régler)?\s*([\d\s\.,]+)\s*€', text)
-    if not ttc_match:
-        raise ValueError("Total TTC not found.")
-    total_ttc = ttc_match.group(1).strip()
-
-    logger.info(f"Extracted invoice {invoice_number} for order {order_number}")
-    return {
-        'invoice_number': invoice_number,
-        'order_number': order_number,
-        'total_ttc': total_ttc
-    }
-
+    """Extract invoice information using the configured parser."""
+    return parser.extract_info(text)
 
 def load_mail_config(config_file):
     """Load email configuration from an INI file."""
